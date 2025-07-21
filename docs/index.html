@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>桧山線 運行状況</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    h1 {
+      font-size: 1.5em;
+    }
+
+    .legend {
+      margin-bottom: 1em;
+      padding: 10px;
+      background: #eee;
+      border-radius: 10px;
+      line-height: 1.6;
+    }
+
+    .legend span {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      margin-right: 0.4em;
+      border-radius: 50%;
+      vertical-align: middle;
+    }
+
+    .diagram {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-top: 30px;
+      justify-content: center;
+    }
+
+    .station {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 10px;
+    }
+
+    .circle {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid black;
+      margin-bottom: 8px;
+    }
+
+    .line {
+      width: 40px;
+      height: 4px;
+      background: #ccc;
+      transition: background 0.3s, box-shadow 0.3s;
+      margin: 0 10px;
+    }
+
+    .line.normal {
+      background: green;
+      box-shadow: 0 0 10px rgba(0, 128, 0, 0.6);
+    }
+
+    .line.delay {
+      background: orange;
+      box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
+    }
+
+    .line.stop {
+      background: red;
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+    }
+
+    .status-box {
+      background: #eee;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      line-height: 1.5;
+      width: 100%;
+    }
+
+    .route-description {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>桧山線 運行状況</h1>
+
+  <div class="legend">
+    <p><span style="background: green;"></span>通常運行</p>
+    <p><span style="background: orange;"></span>遅延</p>
+    <p><span style="background: red;"></span>運転見合わせ</p>
+  </div>
+
+  <div id="diagramContainer"></div>
+
+  <div id="statusDescription" class="status-box"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPOSCT6SegHUu9O7hsuetIOFsXUD6vdG8",
+      authDomain: "train-jokyoc.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc",
+      storageBucket: "train-jokyoc.appspot.com",
+      messagingSenderId: "899323745431",
+      appId: "1:899323745431:web:edea3e0c2b12eeaa23c5d2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const routes = {
+      main: {
+        name: "桧山本線",
+        stations: ["桧山", "桧山東", "長田", "赤瀬戸", "上後多", "北区区役所前", "桧山みなみ野", "桧山中央"]
+      },
+      branch: {
+        name: "桧山東支線",
+        stations: ["桧山", "桧山東", "南桧山", "卯奈川銀山", "播輪里", "県立医療センター", "大多田"]
+      }
+    };
+
+    // 路線の状態を表示する関数
+    function renderRoute(routeKey, statuses) {
+      const route = routes[routeKey];
+      const container = document.createElement("div");
+      container.className = "diagram";
+      container.setAttribute("data-route", routeKey); // ここで識別用のデータ属性を追加
+
+      route.stations.forEach((station, i) => {
+        const stationEl = document.createElement("div");
+        stationEl.className = "station";
+
+        const circle = document.createElement("div");
+        circle.className = "circle";
+        stationEl.appendChild(circle);
+
+        const label = document.createElement("div");
+        label.textContent = station;
+        stationEl.appendChild(label);
+
+        container.appendChild(stationEl);
+
+        // 駅の間に線を追加
+        if (i < route.stations.length - 1) {
+          const line = document.createElement("div");
+          const status = statuses[i]?.trim() || "normal";
+          line.className = "line " + status;
+          container.appendChild(line);
+        }
+      });
+
+      return container;
+    }
+
+    // 運行状況の説明を更新する関数
+    function updateDescription(statuses, routeKey) {
+      const route = routes[routeKey];
+      const stations = route.stations;
+      const descBox = document.getElementById("statusDescription");
+      let hasDisruptions = false;
+      let result = `<div class="route-description"><h2>${route.name}</h2><ul style="padding-left: 1.2em;">`;
+
+      let i = 0;
+      while (i < statuses.length) {
+        const status = statuses[i];
+        let j = i + 1;
+        while (j < statuses.length && statuses[j] === status) j++;
+        const from = stations[i];
+        const to = stations[j];
+        if (status !== "normal") {
+          hasDisruptions = true;
+          const message =
+            status === "delay" ? "遅延" : "運転を見合わせ";
+          result += `<li>${from}〜${to}間で${message}が発生しています。</li>`;
+        }
+        i = j;
+      }
+
+      if (!hasDisruptions) {
+        result = ''; // 遅延や運転見合わせがなければ説明文を表示しない
+      } else {
+        result += `</ul></div>`;
+      }
+
+      // 新しい説明文を挿入
+      const newStatusBox = document.createElement('div');
+      newStatusBox.className = 'status-box';
+      newStatusBox.innerHTML = result;
+      descBox.innerHTML = ''; // 現在の説明をクリア
+      descBox.appendChild(newStatusBox);
+    }
+
+    // Firebaseから運行状況をロードする関数
+    function loadStatus() {
+      const container = document.getElementById("diagramContainer");
+      const descBox = document.getElementById("statusDescription");
+
+      // コンテナと説明ボックスを毎回クリアする
+      container.innerHTML = "";
+      descBox.innerHTML = "";
+
+      const routeKeys = ["main", "branch"];
+
+      // Firebaseのデータベースからリアルタイムで取得する
+      routeKeys.forEach(routeKey => {
+        const statusRef = ref(db, `status/${routeKey}`);
+
+        // Firebaseのデータが変更されるたびに呼び出される
+        onValue(statusRef, (snapshot) => {
+          const statuses = snapshot.val();
+          if (!statuses || !Array.isArray(statuses)) return;
+
+          // 既存の内容がない場合のみ新しい内容を追加
+          if (!container.querySelector(`[data-route=${routeKey}]`)) {
+            const diagram = renderRoute(routeKey, statuses);
+            container.appendChild(diagram);
+            updateDescription(statuses, routeKey);
+          } else {
+            // 既に存在する場合は更新する
+            const existingRoute = container.querySelector(`[data-route=${routeKey}]`);
+            existingRoute.innerHTML = "";  // 既存のコンテンツをクリア
+            const diagram = renderRoute(routeKey, statuses);
+            existingRoute.appendChild(diagram);
+            updateDescription(statuses, routeKey);
+          }
+        });
+      });
+    }
+
+    loadStatus();
+  </script>
+</body>
+</html>

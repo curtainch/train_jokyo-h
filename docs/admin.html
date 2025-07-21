@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>桧山線 管理ページ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      background: #f9f9f9;
+    }
+
+    h2 {
+      margin-top: 2rem;
+    }
+
+    .section {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .station-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    select {
+      padding: 0.3rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #logout {
+      background: #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <h1>桧山線 管理ページ</h1>
+
+  <div id="adminPanel" style="display: none;">
+    <button id="resetAll">全て通常に戻す</button>
+
+    <div id="sections"></div>
+    <button id="logout">ログアウト</button>
+  </div>
+
+  <div id="loginPanel">
+    <h2>ログイン</h2>
+    <input type="email" id="email" placeholder="メールアドレス"><br>
+    <input type="password" id="password" placeholder="パスワード"><br>
+    <button id="login">ログイン</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      set,
+      update
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPOSCT6SegHUu9O7hsuetIOFsXUD6vdG8",
+      authDomain: "train-jokyoc.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc",
+      storageBucket: "train-jokyoc.appspot.com",
+      messagingSenderId: "899323745431",
+      appId: "1:899323745431:web:edea3e0c2b12eeaa23c5d2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    const routes = {
+      main: [
+        "桧山",
+        "桧山東",
+        "長田",
+        "赤瀬戸",
+        "上後多",
+        "北区区役所前",
+        "桧山みなみ野",
+        "桧山中央"
+      ],
+      branch: [
+        "桧山",
+        "桧山東",
+        "南桧山",
+        "卯奈川銀山",
+        "播輪里",
+        "県立医療センター",
+        "大多田"
+      ]
+    };
+
+    const loginPanel = document.getElementById("loginPanel");
+    const adminPanel = document.getElementById("adminPanel");
+    const sectionsDiv = document.getElementById("sections");
+
+    function createControlsForRoute(routeKey, stations) {
+      const section = document.createElement("div");
+      section.className = "section";
+
+      const title = document.createElement("h2");
+      title.textContent = routeKey === "main" ? "桧山本線" : "桧山東支線";
+      section.appendChild(title);
+
+      const stationGroup = document.createElement("div");
+      stationGroup.className = "station-group";
+
+      for (let i = 0; i < stations.length - 1; i++) {
+        const controlRow = document.createElement("div");
+        controlRow.className = "control-row";
+
+        const label = document.createElement("span");
+        label.textContent = `${stations[i]} → ${stations[i + 1]}`;
+        controlRow.appendChild(label);
+
+        const select = document.createElement("select");
+        select.dataset.route = routeKey;
+        select.dataset.index = i;
+
+        ["normal", "delay", "stop"].forEach(status => {
+          const option = document.createElement("option");
+          option.value = status;
+          option.textContent =
+            status === "normal" ? "通常" :
+            status === "delay" ? "遅延" : "運転見合わせ";
+          select.appendChild(option);
+        });
+
+        controlRow.appendChild(select);
+        stationGroup.appendChild(controlRow);
+      }
+
+      section.appendChild(stationGroup);
+      sectionsDiv.appendChild(section);
+    }
+
+    function populateControls(statusData) {
+      sectionsDiv.innerHTML = "";
+      for (const routeKey in routes) {
+        createControlsForRoute(routeKey, routes[routeKey]);
+      }
+
+      document.querySelectorAll("select").forEach(select => {
+        const route = select.dataset.route;
+        const index = Number(select.dataset.index);
+        const status = statusData[route]?.[index]?.trim() || "normal";
+        select.value = status;
+
+        select.onchange = () => {
+          const newStatus = select.value;
+
+          set(ref(db, `status/${route}/${index}`), newStatus)
+            .then(() => {
+              console.log('保存成功');
+            })
+            .catch((error) => {
+              console.error('保存失敗:', error);
+            });
+        };
+      });
+    }
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        loginPanel.style.display = "none";
+        adminPanel.style.display = "block";
+
+        onValue(ref(db, "status"), snapshot => {
+          const data = snapshot.val() || {};
+          populateControls(data);
+        });
+      } else {
+        loginPanel.style.display = "block";
+        adminPanel.style.display = "none";
+      }
+    });
+
+    document.getElementById("login").onclick = () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          // ログイン成功
+        })
+        .catch(error => {
+          alert("ログイン失敗：" + error.message);
+        });
+    };
+
+    document.getElementById("logout").onclick = () => {
+      signOut(auth);
+    };
+
+    document.getElementById("resetAll").onclick = () => {
+      if (!confirm("本当に全て通常に戻しますか？")) return;
+
+      const updates = {};
+      for (const route in routes) {
+        const numSections = routes[route].length - 1;
+        updates[route] = Array(numSections).fill("normal");
+      }
+
+      set(ref(db, "status"), updates);
+    };
+  </script>
+</body>
+</html>
