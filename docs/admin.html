@@ -55,6 +55,18 @@
     #logout {
       background: #dc3545;
     }
+
+    #operatingToggleSection {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 10px;
+    }
+    #toggleOperating {
+      transform: scale(1.5);
+      margin-left: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -62,6 +74,12 @@
 
   <div id="adminPanel" style="display: none;">
     <button id="resetAll">全て通常に戻す</button>
+
+    <div id="operatingToggleSection" style="display: none;">
+      <label>
+        全体運行中 <input type="checkbox" id="toggleOperating">
+      </label>
+    </div>
 
     <div id="sections"></div>
     <button id="logout">ログアウト</button>
@@ -86,50 +104,34 @@
       getDatabase,
       ref,
       onValue,
-      set,
-      update
+      set
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
-  authDomain: "train-jokyoc-89bb2.firebaseapp.com",
-  databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "train-jokyoc-89bb2",
-  storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
-  messagingSenderId: "348132786329",
-  appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
-  measurementId: "G-9VB9ENH5XP"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
+      authDomain: "train-jokyoc-89bb2.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc-89bb2",
+      storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
+      messagingSenderId: "348132786329",
+      appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
+      measurementId: "G-9VB9ENH5XP"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
     const routes = {
-      main: [
-        "桧山",
-        "桧山東",
-        "長田",
-        "赤瀬戸",
-        "上後多",
-        "北区区役所前",
-        "桧山みなみ野",
-        "桧山中央"
-      ],
-      branch: [
-        "桧山",
-        "桧山東",
-        "南桧山",
-        "卯奈川銀山",
-        "播輪里",
-        "県立医療センター",
-        "大多田"
-      ]
+      main: ["桧山", "桧山東", "長田", "赤瀬戸", "上後多", "北区区役所前", "桧山みなみ野", "桧山中央"],
+      branch: ["桧山", "桧山東", "南桧山", "卯奈川銀山", "播輪里", "県立医療センター", "大多田"]
     };
 
     const loginPanel = document.getElementById("loginPanel");
     const adminPanel = document.getElementById("adminPanel");
     const sectionsDiv = document.getElementById("sections");
+    const toggleOperating = document.getElementById("toggleOperating");
+    const toggleSection = document.getElementById("operatingToggleSection");
 
     function createControlsForRoute(routeKey, stations) {
       const section = document.createElement("div");
@@ -185,14 +187,9 @@ const firebaseConfig = {
 
         select.onchange = () => {
           const newStatus = select.value;
-
           set(ref(db, `status/${route}/${index}`), newStatus)
-            .then(() => {
-              console.log('保存成功');
-            })
-            .catch((error) => {
-              console.error('保存失敗:', error);
-            });
+            .then(() => console.log('保存成功'))
+            .catch((error) => console.error('保存失敗:', error));
         };
       });
     }
@@ -205,7 +202,17 @@ const firebaseConfig = {
         onValue(ref(db, "status"), snapshot => {
           const data = snapshot.val() || {};
           populateControls(data);
+          toggleOperating.checked = data.isOperating !== false;
         });
+
+        toggleSection.style.display = "block";
+
+        toggleOperating.addEventListener("change", () => {
+          set(ref(db, "status/isOperating"), toggleOperating.checked)
+            .then(() => console.log("isOperating updated"))
+            .catch(err => alert("更新失敗: " + err.message));
+        });
+
       } else {
         loginPanel.style.display = "block";
         adminPanel.style.display = "none";
@@ -216,17 +223,10 @@ const firebaseConfig = {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          // ログイン成功
-        })
-        .catch(error => {
-          alert("ログイン失敗：" + error.message);
-        });
+        .catch(error => alert("ログイン失敗：" + error.message));
     };
 
-    document.getElementById("logout").onclick = () => {
-      signOut(auth);
-    };
+    document.getElementById("logout").onclick = () => signOut(auth);
 
     document.getElementById("resetAll").onclick = () => {
       if (!confirm("本当に全て通常に戻しますか？")) return;

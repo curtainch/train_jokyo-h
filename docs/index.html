@@ -15,6 +15,7 @@
       align-items: center;
       height: 100vh;
       flex-direction: column;
+      text-align: center;
     }
 
     h1 {
@@ -100,7 +101,7 @@
   </style>
 </head>
 <body>
-  <h1>桧山線 運行状況</h1>
+  <h1 id="title">桧山線 運行状況</h1>
 
   <div class="legend">
     <p><span style="background: green;"></span>通常運行</p>
@@ -116,16 +117,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
-  authDomain: "train-jokyoc-89bb2.firebaseapp.com",
-  databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "train-jokyoc-89bb2",
-  storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
-  messagingSenderId: "348132786329",
-  appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
-  measurementId: "G-9VB9ENH5XP"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
+      authDomain: "train-jokyoc-89bb2.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc-89bb2",
+      storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
+      messagingSenderId: "348132786329",
+      appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
+      measurementId: "G-9VB9ENH5XP"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -141,12 +142,33 @@ const firebaseConfig = {
       }
     };
 
-    // 路線の状態を表示する関数
+    const container = document.getElementById("diagramContainer");
+    const descBox = document.getElementById("statusDescription");
+    const title = document.getElementById("title");
+
+    const isOperatingRef = ref(db, "status/isOperating");
+    onValue(isOperatingRef, (snapshot) => {
+      const isOperating = snapshot.val();
+
+      container.innerHTML = "";
+      descBox.innerHTML = "";
+
+      if (!isOperating) {
+        const msg = document.createElement("div");
+        msg.className = "status-box";
+        msg.innerHTML = "<strong>現在、全路線で運行を停止しています。</strong>";
+        container.appendChild(msg);
+        return;
+      }
+
+      loadStatus();
+    });
+
     function renderRoute(routeKey, statuses) {
       const route = routes[routeKey];
       const container = document.createElement("div");
       container.className = "diagram";
-      container.setAttribute("data-route", routeKey); // ここで識別用のデータ属性を追加
+      container.setAttribute("data-route", routeKey);
 
       route.stations.forEach((station, i) => {
         const stationEl = document.createElement("div");
@@ -162,7 +184,6 @@ const firebaseConfig = {
 
         container.appendChild(stationEl);
 
-        // 駅の間に線を追加
         if (i < route.stations.length - 1) {
           const line = document.createElement("div");
           const status = statuses[i]?.trim() || "normal";
@@ -174,7 +195,6 @@ const firebaseConfig = {
       return container;
     }
 
-    // 運行状況の説明を更新する関数
     function updateDescription(statuses, routeKey) {
       const route = routes[routeKey];
       const stations = route.stations;
@@ -191,81 +211,42 @@ const firebaseConfig = {
         const to = stations[j];
         if (status !== "normal") {
           hasDisruptions = true;
-          const message =
-            status === "delay" ? "遅延" : "運転を見合わせ";
+          const message = status === "delay" ? "遅延" : "運転を見合わせ";
           result += `<li>${from}〜${to}間で${message}が発生しています。</li>`;
         }
         i = j;
       }
 
       if (!hasDisruptions) {
-        result = ''; // 遅延や運転見合わせがなければ説明文を表示しない
+        result = '';
       } else {
         result += `</ul></div>`;
       }
 
-      // 新しい説明文を挿入
       const newStatusBox = document.createElement('div');
       newStatusBox.className = 'status-box';
       newStatusBox.innerHTML = result;
-      descBox.innerHTML = ''; // 現在の説明をクリア
+      descBox.innerHTML = '';
       descBox.appendChild(newStatusBox);
     }
 
-    // Firebaseから運行状況をロードする関数
-function loadStatus() {
-  const container = document.getElementById("diagramContainer");
-  const descBox = document.getElementById("statusDescription");
+    function loadStatus() {
+      const routeKeys = ["main", "branch"];
+      routeKeys.forEach(routeKey => {
+        const statusRef = ref(db, `status/${routeKey}`);
+        onValue(statusRef, (snapshot) => {
+          const statuses = snapshot.val();
+          if (!statuses || !Array.isArray(statuses)) return;
 
-  container.innerHTML = "";
-  descBox.innerHTML = "";
+          const existing = document.querySelector(`[data-route=${routeKey}]`);
+          if (existing) existing.remove();
 
-  // まず isOperating を確認する
-  const isOperatingRef = ref(db, `status/isOperating`);
-  onValue(isOperatingRef, (snapshot) => {
-    const isOperating = snapshot.val();
-
-    if (isOperating === false) {
-      // 運行していないときの表示
-      const notice = document.createElement("div");
-      notice.textContent = "現在、全路線で運行を停止しています。";
-      notice.style.padding = "20px";
-      notice.style.background = "#ffe0e0";
-      notice.style.borderRadius = "8px";
-      notice.style.fontSize = "1.2em";
-      container.appendChild(notice);
-      return; // 以下の処理は行わない
-    }
-
-    // 通常の運行状況を読み込み
-    const routeKeys = ["main", "branch"];
-
-    routeKeys.forEach(routeKey => {
-      const routeStatusRef = ref(db, `status/${routeKey}`);
-      onValue(routeStatusRef, (snapshot) => {
-        const data = snapshot.val();
-        if (!data || !Array.isArray(data.statuses)) return;
-
-        const statuses = data.statuses;
-
-        // 既存の表示をクリアして再表示
-        const existingRoute = container.querySelector(`[data-route=${routeKey}]`);
-        if (existingRoute) existingRoute.remove();
-
-        const routeBox = document.createElement("div");
-        routeBox.setAttribute("data-route", routeKey);
-
-        const diagram = renderRoute(routeKey, statuses);
-        routeBox.appendChild(diagram);
-        container.appendChild(routeBox);
-        updateDescription(statuses, routeKey);
+          const diagram = renderRoute(routeKey, statuses);
+          container.appendChild(diagram);
+          updateDescription(statuses, routeKey);
+        });
       });
-    });
-  });
-}
-
-
-    loadStatus();
+    }
   </script>
 </body>
 </html>
