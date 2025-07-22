@@ -213,41 +213,57 @@ const firebaseConfig = {
     }
 
     // Firebaseから運行状況をロードする関数
-    function loadStatus() {
-      const container = document.getElementById("diagramContainer");
-      const descBox = document.getElementById("statusDescription");
+function loadStatus() {
+  const container = document.getElementById("diagramContainer");
+  const descBox = document.getElementById("statusDescription");
 
-      // コンテナと説明ボックスを毎回クリアする
-      container.innerHTML = "";
-      descBox.innerHTML = "";
+  container.innerHTML = "";
+  descBox.innerHTML = "";
 
-      const routeKeys = ["main", "branch"];
+  // まず isOperating を確認する
+  const isOperatingRef = ref(db, `status/isOperating`);
+  onValue(isOperatingRef, (snapshot) => {
+    const isOperating = snapshot.val();
 
-      // Firebaseのデータベースからリアルタイムで取得する
-      routeKeys.forEach(routeKey => {
-        const statusRef = ref(db, `status/${routeKey}`);
-
-        // Firebaseのデータが変更されるたびに呼び出される
-        onValue(statusRef, (snapshot) => {
-          const statuses = snapshot.val();
-          if (!statuses || !Array.isArray(statuses)) return;
-
-          // 既存の内容がない場合のみ新しい内容を追加
-          if (!container.querySelector(`[data-route=${routeKey}]`)) {
-            const diagram = renderRoute(routeKey, statuses);
-            container.appendChild(diagram);
-            updateDescription(statuses, routeKey);
-          } else {
-            // 既に存在する場合は更新する
-            const existingRoute = container.querySelector(`[data-route=${routeKey}]`);
-            existingRoute.innerHTML = "";  // 既存のコンテンツをクリア
-            const diagram = renderRoute(routeKey, statuses);
-            existingRoute.appendChild(diagram);
-            updateDescription(statuses, routeKey);
-          }
-        });
-      });
+    if (isOperating === false) {
+      // 運行していないときの表示
+      const notice = document.createElement("div");
+      notice.textContent = "現在、全路線で運行を停止しています。";
+      notice.style.padding = "20px";
+      notice.style.background = "#ffe0e0";
+      notice.style.borderRadius = "8px";
+      notice.style.fontSize = "1.2em";
+      container.appendChild(notice);
+      return; // 以下の処理は行わない
     }
+
+    // 通常の運行状況を読み込み
+    const routeKeys = ["main", "branch"];
+
+    routeKeys.forEach(routeKey => {
+      const routeStatusRef = ref(db, `status/${routeKey}`);
+      onValue(routeStatusRef, (snapshot) => {
+        const data = snapshot.val();
+        if (!data || !Array.isArray(data.statuses)) return;
+
+        const statuses = data.statuses;
+
+        // 既存の表示をクリアして再表示
+        const existingRoute = container.querySelector(`[data-route=${routeKey}]`);
+        if (existingRoute) existingRoute.remove();
+
+        const routeBox = document.createElement("div");
+        routeBox.setAttribute("data-route", routeKey);
+
+        const diagram = renderRoute(routeKey, statuses);
+        routeBox.appendChild(diagram);
+        container.appendChild(routeBox);
+        updateDescription(statuses, routeKey);
+      });
+    });
+  });
+}
+
 
     loadStatus();
   </script>
