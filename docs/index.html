@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>桧山線 運行状況</title>
   <style>
     body {
@@ -52,6 +52,7 @@
       flex-direction: column;
       align-items: center;
       margin: 0 10px;
+      flex: 0 0 auto;
     }
 
     .circle {
@@ -93,16 +94,66 @@
       margin-top: 10px;
       line-height: 1.5;
       width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      height: 2em;
     }
 
-    .route-description {
-      margin-top: 20px;
+    #scrollWrapper {
+      position: relative;
+      width: 100%;
+      height: 2em;
+      overflow: hidden;
+    }
+
+    .scroll-text {
+      display: inline-block;
+      white-space: nowrap;
+      font-size: 16px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding-left: 100%;
+      will-change: transform;
+      animation: scroll-left 30s linear infinite;
+    }
+
+    #scrollMessage2 {
+      animation-delay: 15s;
+    }
+
+    @keyframes scroll-left {
+      0% {
+        transform: translateX(100%);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    @media (max-width: 768px) {
+      #diagramContainer {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+      }
+
+      .diagram {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        width: max-content;
+      }
+
+      .scroll-text {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1 id="title">桧山線 運行状況</h1>
-
+  <h1 id="title">桧山線 運行状況</h1> <a href="https://discord.gg/3a2c5b6" target="_blank">公式Discord</a>
+  <h2 id="attention">※これはRoblox上の鉄道です。実在する人物・団体等とは関係ありません。</h2>
   <div class="legend">
     <p><span style="background: green;"></span>通常運行</p>
     <p><span style="background: orange;"></span>遅延</p>
@@ -111,7 +162,12 @@
 
   <div id="diagramContainer"></div>
 
-  <div id="statusDescription" class="status-box"></div>
+  <div id="statusDescription" class="status-box">
+    <div id="scrollWrapper">
+      <div id="scrollMessage1" class="scroll-text">運行状況を取得中...</div>
+      <div id="scrollMessage2" class="scroll-text">運行状況を取得中...</div>
+    </div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -143,32 +199,40 @@
     };
 
     const container = document.getElementById("diagramContainer");
-    const descBox = document.getElementById("statusDescription");
-    const title = document.getElementById("title");
+
+    const scrollMessage1 = document.getElementById("scrollMessage1");
+    const scrollMessage2 = document.getElementById("scrollMessage2");
 
     const isOperatingRef = ref(db, "status/isOperating");
     onValue(isOperatingRef, (snapshot) => {
       const isOperating = snapshot.val();
 
       container.innerHTML = "";
-      descBox.innerHTML = "";
+      scrollMessage1.textContent = "";
+      scrollMessage2.textContent = "";
 
       if (!isOperating) {
         const msg = document.createElement("div");
         msg.className = "status-box";
-        msg.innerHTML = "<strong>現在、全路線で運行を停止しています。</strong>";
+        msg.innerHTML = "<strong>現在、運行を行っておりません。</strong>";
         container.appendChild(msg);
+
+        const stopText = "現在、運行を行っておりません。詳しくは公式Discordをご確認ください。";
+        scrollMessage1.textContent = stopText;
+        scrollMessage2.textContent = stopText;
         return;
       }
 
       loadStatus();
     });
 
+    const statusesAll = {};
+
     function renderRoute(routeKey, statuses) {
       const route = routes[routeKey];
-      const container = document.createElement("div");
-      container.className = "diagram";
-      container.setAttribute("data-route", routeKey);
+      const containerDiv = document.createElement("div");
+      containerDiv.className = "diagram";
+      containerDiv.setAttribute("data-route", routeKey);
 
       route.stations.forEach((station, i) => {
         const stationEl = document.createElement("div");
@@ -182,68 +246,76 @@
         label.textContent = station;
         stationEl.appendChild(label);
 
-        container.appendChild(stationEl);
+        containerDiv.appendChild(stationEl);
 
         if (i < route.stations.length - 1) {
           const line = document.createElement("div");
           const status = statuses[i]?.trim() || "normal";
           line.className = "line " + status;
-          container.appendChild(line);
+          containerDiv.appendChild(line);
         }
       });
 
-      return container;
+      return containerDiv;
     }
 
-    function updateDescription(statuses, routeKey) {
-      const route = routes[routeKey];
-      const stations = route.stations;
-      const descBox = document.getElementById("statusDescription");
-      let hasDisruptions = false;
-      let result = `<div class="route-description"><h2>${route.name}</h2><ul style="padding-left: 1.2em;">`;
+    function updateDescriptionsAll(statusesAll) {
+      const order = ['main', 'branch'];
+      let combinedText = '';
 
-      let i = 0;
-      while (i < statuses.length) {
-        const status = statuses[i];
-        let j = i + 1;
-        while (j < statuses.length && statuses[j] === status) j++;
-        const from = stations[i];
-        const to = stations[j];
-        if (status !== "normal") {
-          hasDisruptions = true;
-          const message = status === "delay" ? "遅延" : "運転を見合わせ";
-          result += `<li>${from}〜${to}間で${message}が発生しています。</li>`;
+      order.forEach(routeKey => {
+        const statuses = statusesAll[routeKey];
+        if (!statuses || !Array.isArray(statuses)) return;
+
+        const route = routes[routeKey];
+        const stations = route.stations;
+
+        let hasDisruptions = false;
+        let text = `${route.name}：`;
+
+        let i = 0;
+        while (i < statuses.length) {
+          const status = statuses[i];
+          let j = i + 1;
+          while (j < statuses.length && statuses[j] === status) j++;
+          const from = stations[i];
+          const to = stations[j] || stations[stations.length - 1];
+          if (status !== "normal") {
+            hasDisruptions = true;
+            const message = status === "delay" ? "遅延" : "運転見合わせ";
+            text += `${from}〜${to}間で${message}が発生しています。 `;
+          }
+          i = j;
         }
-        i = j;
-      }
 
-      if (!hasDisruptions) {
-        result = '';
-      } else {
-        result += `</ul></div>`;
-      }
+        if (!hasDisruptions) {
+          text += '現在、通常運行しています。 ';
+        }
+        combinedText += text;
+      });
 
-      const newStatusBox = document.createElement('div');
-      newStatusBox.className = 'status-box';
-      newStatusBox.innerHTML = result;
-      descBox.innerHTML = '';
-      descBox.appendChild(newStatusBox);
+      scrollMessage1.textContent = combinedText || "現在、全線通常運行しています。";
+      scrollMessage2.textContent = combinedText || "現在、全線通常運行しています。";
     }
 
     function loadStatus() {
-      const routeKeys = ["main", "branch"];
+      const routeKeys = ['main', 'branch'];
       routeKeys.forEach(routeKey => {
         const statusRef = ref(db, `status/${routeKey}`);
         onValue(statusRef, (snapshot) => {
           const statuses = snapshot.val();
           if (!statuses || !Array.isArray(statuses)) return;
 
-          const existing = document.querySelector(`[data-route=${routeKey}]`);
-          if (existing) existing.remove();
+          statusesAll[routeKey] = statuses;
 
-          const diagram = renderRoute(routeKey, statuses);
-          container.appendChild(diagram);
-          updateDescription(statuses, routeKey);
+          container.innerHTML = '';
+          ['main', 'branch'].forEach(key => {
+            if (!statusesAll[key]) return;
+            const diagram = renderRoute(key, statusesAll[key]);
+            container.appendChild(diagram);
+          });
+
+          updateDescriptionsAll(statusesAll);
         });
       });
     }
