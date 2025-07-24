@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桧山線 遅延情報管理ページ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    #logout {
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    #logout:hover {
+      background: #b52a2a;
+    }
+    .delay-list {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+    .delay-item {
+      border-bottom: 1px solid #ddd;
+      padding: 0.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delay-item:last-child {
+      border-bottom: none;
+    }
+    button.delete-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+    }
+    button.delete-btn:hover {
+      background: #b52a2a;
+    }
+    form {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    form > div {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button.submit-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer;
+    }
+    button.submit-btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>桧山線 遅延情報管理ページ</h1>
+
+  <div id="delayList" class="delay-list">
+    <h2>登録済み遅延情報</h2>
+    <div id="delayItems">読み込み中...</div>
+  </div>
+
+  <form id="delayForm">
+    <h2>新しい遅延情報を登録</h2>
+    <div>
+      <label for="delayTitle">タイトル</label>
+      <input type="text" id="delayTitle" maxlength="100" required />
+    </div>
+    <div>
+      <label for="delayDate">日付 (例: 2025-07-23T14:30)</label>
+      <input type="datetime-local" id="delayDate" required />
+    </div>
+    <div>
+      <label for="delayMinutes">遅延時間（分）</label>
+      <input type="number" id="delayMinutes" min="0" step="1" required />
+    </div>
+    <div>
+      <label for="delayDescription">内容</label>
+      <textarea id="delayDescription" rows="4" maxlength="500" required></textarea>
+    </div>
+    <button type="submit" class="submit-btn">登録</button>
+  </form>
+
+  <button id="logout">ログアウト</button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      push,
+      remove
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
+      authDomain: "train-jokyoc-89bb2.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc-89bb2",
+      storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
+      messagingSenderId: "348132786329",
+      appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
+      measurementId: "G-9VB9ENH5XP"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    const delayListDiv = document.getElementById("delayItems");
+    const delayForm = document.getElementById("delayForm");
+    const logoutBtn = document.getElementById("logout");
+
+    // ログイン状態チェック
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        alert("ログインが必要です");
+        location.href = "admin-login.html"; // 適宜変更してください
+      }
+    });
+
+    // 14日以上前の遅延情報を自動削除しつつ一覧表示
+    const delayRef = ref(db, "delayInfos");
+    onValue(delayRef, (snapshot) => {
+      const data = snapshot.val();
+      delayListDiv.innerHTML = "";
+      const now = Date.now();
+      const cutoff = now - 1000 * 60 * 60 * 24 * 14; // 14日前
+
+      if (!data) {
+        delayListDiv.textContent = "遅延情報は登録されていません。";
+        return;
+      }
+
+      for (const key in data) {
+        const item = data[key];
+
+        // 14日以上前なら削除して表示しない
+        if (item.date && new Date(item.date).getTime() < cutoff) {
+          remove(ref(db, `delayInfos/${key}`));
+          continue;
+        }
+
+        const div = document.createElement("div");
+        div.className = "delay-item";
+        div.innerHTML = `
+          <div>
+            <strong>${item.title}</strong><br>
+            <small>${item.date}</small><br>
+            <p>遅延時間: ${item.delayMinutes ?? "未設定"}分</p>
+            <p>${item.description}</p>
+          </div>
+          <button class="delete-btn" data-key="${key}">削除</button>
+        `;
+        delayListDiv.appendChild(div);
+      }
+
+      // 削除ボタンにイベント追加
+      delayListDiv.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.onclick = () => {
+          if (confirm("この遅延情報を削除しますか？")) {
+            remove(ref(db, `delayInfos/${btn.dataset.key}`));
+          }
+        };
+      });
+    });
+
+    // 新規遅延情報登録
+    delayForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById("delayTitle").value.trim();
+      const date = document.getElementById("delayDate").value.trim();
+      const delayMinutesStr = document.getElementById("delayMinutes").value.trim();
+      const description = document.getElementById("delayDescription").value.trim();
+
+      if (!title || !date || !delayMinutesStr || !description) {
+        alert("全て入力してください");
+        return;
+      }
+
+      const delayMinutes = Number(delayMinutesStr);
+      if (isNaN(delayMinutes) || delayMinutes < 0) {
+        alert("遅延時間は0以上の数字を入力してください");
+        return;
+      }
+
+      push(delayRef, { title, date, delayMinutes, description })
+        .then(() => {
+          delayForm.reset();
+          alert("遅延情報を登録しました");
+        })
+        .catch(err => alert("登録に失敗しました: " + err.message));
+    });
+
+    // ログアウト処理
+    logoutBtn.onclick = () => signOut(auth);
+  </script>
+</body>
+</html>

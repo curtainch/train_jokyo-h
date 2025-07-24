@@ -149,11 +149,80 @@
         font-size: 14px;
       }
     }
+
+    /* メニュー */
+    #menuToggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #fff;
+      border-radius: 6px;
+      padding: 5px 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 2001;
+    }
+
+    #menuOverlay {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 250px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+      transform: translateX(100%);
+      transition: transform 0.4s ease;
+      z-index: 2000;
+      padding: 2rem 1.5rem;
+      box-sizing: border-box;
+    }
+
+    #menuOverlay.open {
+      transform: translateX(0);
+    }
+
+    #menuOverlay .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 28px;
+      cursor: pointer;
+      z-index: 2002;
+    }
+
+    #menuOverlay a {
+      display: block;
+      margin: 20px 0;
+      font-weight: bold;
+      color: #333;
+      text-decoration: none;
+    }
+
+    #menuOverlay a:hover {
+      text-decoration: underline;
+    }
+
+
   </style>
 </head>
 <body>
-  <h1 id="title">桧山線 運行状況</h1> <a href="https://discord.gg/3a2c5b6" target="_blank">公式Discord</a>
+  <!-- ☰ボタン -->
+  <div id="menuToggle">☰</div>
+
+  <!-- スライドメニュー -->
+  <div id="menuOverlay">
+    <span class="close-btn">×</span>
+    <a href="index.html">運行状況</a>
+    <a href="delay.html">遅延証明書発行</a>
+    <a href="https://discord.gg/gb7gDN5Z88" target="_blank">公式Discord</a>
+  </div>
+
+  <h1 id="title">桧山線 運行状況</h1>
   <h2 id="attention">※これはRoblox上の鉄道です。実在する人物・団体等とは関係ありません。</h2>
+
   <div class="legend">
     <p><span style="background: green;"></span>通常運行</p>
     <p><span style="background: orange;"></span>遅延</p>
@@ -169,6 +238,25 @@
     </div>
   </div>
 
+  <!-- メニュー開閉スクリプト -->
+  <script>
+const toggle = document.getElementById("menuToggle");
+const overlay = document.getElementById("menuOverlay");
+const closeBtn = overlay.querySelector(".close-btn");
+
+toggle.addEventListener("click", () => {
+  overlay.classList.add("open");
+  toggle.style.display = "none"; // メニュー開いたら非表示に
+});
+
+closeBtn.addEventListener("click", () => {
+  overlay.classList.remove("open");
+  toggle.style.display = "block"; // メニュー閉じたら表示に戻す
+});
+
+  </script>
+
+  <!-- Firebaseスクリプト -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -199,7 +287,6 @@
     };
 
     const container = document.getElementById("diagramContainer");
-
     const scrollMessage1 = document.getElementById("scrollMessage1");
     const scrollMessage2 = document.getElementById("scrollMessage2");
 

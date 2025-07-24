@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>遅延証明書一覧</title>
+<style>
+  body {
+    font-family: "Noto Sans JP", sans-serif;
+    padding: 2rem;
+    background-color: #f9f9f9;
+    color: #333;
+    max-width: 800px;
+    margin: auto;
+  }
+
+  h1 {
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 1.8rem;
+    color: #222;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 0.3rem;
+  }
+
+  .date-list button,
+  #dateContainer button {
+    margin: 0.4rem 0;
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+    font-size: 1rem;
+    border: none;
+    border-radius: 6px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease;
+    width: 100%;
+    text-align: left;
+  }
+
+  .date-list button:hover,
+  #dateContainer button:hover {
+    background-color: #f0f0f0;
+  }
+
+  .delay-list {
+    margin-top: 2rem;
+  }
+
+  .card {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .card h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #444;
+  }
+
+  .card p {
+    margin: 0.3rem 0;
+    line-height: 1.5;
+  }
+
+  button.pdf-btn {
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+  }
+
+  button.pdf-btn:hover {
+    background-color: #0056b3;
+  }
+
+  button.back-btn {
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 600px) {
+    body {
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+    }
+
+    button.pdf-btn, button.back-btn {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+
+</head>
+<body>
+  <h1>遅延証明書一覧</h1>
+  <div id="dateContainer">
+    <p>読み込み中...</p>
+  </div>
+
+  <div id="delayContainer" style="display:none;">
+    <button class="back-btn" id="backToDates">← 日付一覧に戻る</button>
+    <h2 id="selectedDateTitle"></h2>
+    <div id="delayList"></div>
+  </div>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- 日本語フォント -->
+  <script src="noto-sans-jp.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
+      authDomain: "train-jokyoc-89bb2.firebaseapp.com",
+      databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "train-jokyoc-89bb2",
+      storageBucket: "train-jokyoc-89bb2.appspot.com",
+      messagingSenderId: "348132786329",
+      appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
+      measurementId: "G-9VB9ENH5XP"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const dateContainer = document.getElementById("dateContainer");
+    const delayContainer = document.getElementById("delayContainer");
+    const selectedDateTitle = document.getElementById("selectedDateTitle");
+    const delayList = document.getElementById("delayList");
+    const backToDatesBtn = document.getElementById("backToDates");
+
+    // 日付を yyyy/MM/dd 形式で返す
+    const formatDateOnly = (isoString) => {
+      const d = new Date(isoString);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}/${m}/${day}`;
+    };
+
+    // 遅延詳細の日時表示（時:分まで）
+    const formatDateTime = (isoString) => {
+      const d = new Date(isoString);
+      const h = String(d.getHours()).padStart(2, "0");
+      const min = String(d.getMinutes()).padStart(2, "0");
+      return `${formatDateOnly(isoString)} ${h}:${min}`;
+    };
+
+    const extractDelayMinutes = (description) => {
+      const match = description.match(/(\d+)分/);
+      return match ? Number(match[1]) : null;
+    };
+
+    // PDF生成関数（前回のあなたのコードを流用）
+    const generatePDF = (title, description, date, delayMinutes = null) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.addFileToVFS("NotoSansJP-Regular.ttf", window.NotoSansJPRegular);
+      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+      doc.setFont("NotoSansJP");
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      let y = 60;
+
+      doc.setFontSize(28);
+      doc.text("遅延証明書", pageWidth / 2, y, { align: "center" });
+      y += 30;
+
+      doc.setFontSize(14);
+      doc.text(`発生日時: ${formatDateTime(date)}`, margin, y);
+      y += 20;
+
+      doc.text(`タイトル: ${title}`, margin, y);
+      y += 20;
+
+      const delay = delayMinutes !== null ? delayMinutes : extractDelayMinutes(description);
+      if (delay !== null) {
+        const delayText = `遅延時間: ${delay}分`;
+        doc.setFontSize(20);
+        doc.setTextColor(255, 0, 0);
+        const textWidth = doc.getTextWidth(delayText);
+        const rectX = margin - 5;
+        const rectY = y - 15;
+        const rectHeight = 20;
+        const rectWidth = textWidth + 10;
+        doc.setDrawColor(255, 0, 0);
+        doc.rect(rectX, rectY, rectWidth, rectHeight, "S");
+        doc.text(delayText, margin, y);
+        y += 30;
+        doc.setTextColor(0, 0, 0);
+      }
+
+      doc.setFontSize(14);
+      doc.text("詳細:", margin, y);
+      y += 10;
+
+      let fontSize = 12;
+      let lines = [];
+      const maxHeight = pageHeight - y - 60;
+
+      while (fontSize >= 8) {
+        doc.setFontSize(fontSize);
+        lines = doc.splitTextToSize(description, pageWidth - margin * 2);
+        const totalHeight = lines.length * fontSize * 1.5;
+        if (totalHeight <= maxHeight) break;
+        fontSize--;
+      }
+
+      doc.setFontSize(fontSize);
+      doc.text(lines, margin, y);
+      y += lines.length * fontSize * 1.5 + 20;
+
+      doc.setFontSize(12);
+      doc.text("本証明書は、上記の事象により遅延が発生したことを証明するものです。", margin, y);
+      y += 20;
+
+      const today = new Date();
+      doc.text(`発行日：${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`, margin, y);
+      y += 15;
+      doc.text("桧山鉄道株式会社", margin, y);
+
+      const formatFilenameDate = (isoString) => {
+        const d = new Date(isoString);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const h = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${y}${m}${day}_${h}${min}`;
+      };
+
+      const filename = `遅延証明書_${formatFilenameDate(date)}.pdf`;
+      doc.save(filename);
+    };
+
+    // 全遅延データを読み込み、日付ごとにグループ化する
+    onValue(ref(db, "delayInfos"), (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        dateContainer.innerHTML = "<p>現在遅延証明はありません。</p>";
+        return;
+      }
+
+      // 日付（yyyy/MM/dd）ごとにグループ化
+      const groupedByDate = {};
+      Object.values(data).forEach(info => {
+        const dateKey = formatDateOnly(info.date);
+        if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+        groupedByDate[dateKey].push(info);
+      });
+
+      // 日付一覧表示
+      dateContainer.innerHTML = "<h2>遅延発生日一覧</h2>";
+      for (const dateKey of Object.keys(groupedByDate).sort((a,b) => new Date(b) - new Date(a))) {
+        const btn = document.createElement("button");
+        btn.textContent = dateKey;
+        btn.onclick = () => {
+          showDelaysForDate(dateKey, groupedByDate[dateKey]);
+        };
+        dateContainer.appendChild(btn);
+      }
+    });
+
+    // 指定した日付の遅延情報一覧を表示
+    function showDelaysForDate(dateKey, delayInfos) {
+      dateContainer.style.display = "none";
+      delayContainer.style.display = "block";
+      selectedDateTitle.textContent = `${dateKey} の遅延証明書`;
+
+      delayList.innerHTML = "";
+      delayInfos.forEach(info => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("h3");
+        title.textContent = info.title;
+
+        const datetime = document.createElement("p");
+        datetime.textContent = `発生日時: ${formatDateTime(info.date)}`;
+
+        const desc = document.createElement("p");
+        desc.textContent = info.description;
+
+        const pdfBtn = document.createElement("button");
+        pdfBtn.className = "pdf-btn";
+        pdfBtn.textContent = "PDFで保存";
+        pdfBtn.onclick = () => generatePDF(info.title, info.description, info.date, info.delayMinutes ?? null);
+
+        card.appendChild(title);
+        card.appendChild(datetime);
+        card.appendChild(desc);
+        card.appendChild(pdfBtn);
+
+        delayList.appendChild(card);
+      });
+    }
+
+    backToDatesBtn.onclick = () => {
+      delayContainer.style.display = "none";
+      dateContainer.style.display = "block";
+    };
+  </script>
+</body>
+</html>
