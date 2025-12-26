@@ -221,7 +221,7 @@ function setScrollText(text) {
   scrollText.style.setProperty('--scroll-distance', textWidth + wrapperWidth + 'px');
 
   // アニメーション速度も文字長に応じて調整（任意）
-  const speed = 100; // px/秒
+  const speed = 80; // px/秒
   const duration = (textWidth + wrapperWidth) / speed;
   scrollText.style.animationDuration = duration + 's';
 }
