@@ -18,9 +18,7 @@
       text-align: center;
     }
 
-    h1 {
-      font-size: 1.5em;
-    }
+    h1 { font-size: 1.5em; }
 
     .legend {
       margin-bottom: 1em;
@@ -72,20 +70,9 @@
       margin: 0 10px;
     }
 
-    .line.normal {
-      background: green;
-      box-shadow: 0 0 10px rgba(0, 128, 0, 0.6);
-    }
-
-    .line.delay {
-      background: orange;
-      box-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
-    }
-
-    .line.stop {
-      background: red;
-      box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
-    }
+    .line.normal { background: green; box-shadow: 0 0 10px rgba(0, 128, 0, 0.6); }
+    .line.delay  { background: orange; box-shadow: 0 0 10px rgba(255, 165, 0, 0.6); }
+    .line.stop   { background: red; box-shadow: 0 0 10px rgba(255, 0, 0, 0.7); }
 
     .status-box {
       background: #eee;
@@ -100,6 +87,7 @@
       height: 2em;
     }
 
+    /* 1行スクロール */
     #scrollWrapper {
       position: relative;
       width: 100%;
@@ -107,104 +95,50 @@
       overflow: hidden;
     }
 
-    .scroll-text {
-      display: inline-block;
-      white-space: nowrap;
-      font-size: 16px;
-      position: absolute;
-      top: 0;
-      left: 0;
-      padding-left: 100%;
-      will-change: transform;
-      animation: scroll-left 30s linear infinite;
-    }
+.scroll-text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 16px;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  will-change: transform;
+  animation: scroll-left 5s linear infinite;
+}
 
-    #scrollMessage2 {
-      animation-delay: 15s;
-    }
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);  /* 右の外 */
+  }
+  100% {
+    transform: translateX(calc(-1 * var(--scroll-distance)));
+  }
+}
 
-    @keyframes scroll-left {
-      0% {
-        transform: translateX(100%);
-      }
-      100% {
-        transform: translateX(-100%);
-      }
-    }
 
     @media (max-width: 768px) {
-      #diagramContainer {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        width: 100%;
-      }
-
-      .diagram {
-        flex-wrap: nowrap;
-        justify-content: flex-start;
-        width: max-content;
-      }
-
-      .scroll-text {
-        font-size: 14px;
-      }
+      #diagramContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+      .diagram { flex-wrap: nowrap; justify-content: flex-start; width: max-content; }
+      .scroll-text { font-size: 14px; }
     }
 
     /* メニュー */
     #menuToggle {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      font-size: 30px;
-      font-weight: bold;
-      cursor: pointer;
-      background: #fff;
-      border-radius: 6px;
-      padding: 5px 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      z-index: 2001;
+      position: fixed; top: 20px; right: 20px; font-size: 30px; font-weight: bold;
+      cursor: pointer; background: #fff; border-radius: 6px; padding: 5px 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 2001;
     }
 
     #menuOverlay {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 250px;
-      height: 100%;
-      background: #fff;
-      box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-      transform: translateX(100%);
-      transition: transform 0.4s ease;
-      z-index: 2000;
-      padding: 2rem 1.5rem;
-      box-sizing: border-box;
+      position: fixed; top: 0; right: 0; width: 250px; height: 100%; background: #fff;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.2); transform: translateX(100%);
+      transition: transform 0.4s ease; z-index: 2000; padding: 2rem 1.5rem; box-sizing: border-box;
     }
 
-    #menuOverlay.open {
-      transform: translateX(0);
-    }
-
-    #menuOverlay .close-btn {
-      position: absolute;
-      top: 15px;
-      right: 20px;
-      font-size: 28px;
-      cursor: pointer;
-      z-index: 2002;
-    }
-
-    #menuOverlay a {
-      display: block;
-      margin: 20px 0;
-      font-weight: bold;
-      color: #333;
-      text-decoration: none;
-    }
-
-    #menuOverlay a:hover {
-      text-decoration: underline;
-    }
-
+    #menuOverlay.open { transform: translateX(0); }
+    #menuOverlay .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; z-index: 2002; }
+    #menuOverlay a { display: block; margin: 20px 0; font-weight: bold; color: #333; text-decoration: none; }
+    #menuOverlay a:hover { text-decoration: underline; }
 
   </style>
 </head>
@@ -231,11 +165,12 @@
 
   <div id="diagramContainer"></div>
 
-  <div id="statusDescription" class="status-box">
-    <div id="scrollWrapper">
-      <div id="scrollMessage1" class="scroll-text">運行状況を取得中...</div>
-      <div id="scrollMessage2" class="scroll-text">運行状況を取得中...</div>
-    </div>
+<div id="statusDescription" class="status-box">
+  <div id="scrollWrapper">
+    <div id="scrollText" class="scroll-text">運行状況を取得中...</div>
+  </div>
+</div>
+
   </div>
 
   <!-- メニュー開閉スクリプト -->
@@ -244,168 +179,155 @@ const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("menuOverlay");
 const closeBtn = overlay.querySelector(".close-btn");
 
-toggle.addEventListener("click", () => {
-  overlay.classList.add("open");
-  toggle.style.display = "none"; // メニュー開いたら非表示に
-});
-
-closeBtn.addEventListener("click", () => {
-  overlay.classList.remove("open");
-  toggle.style.display = "block"; // メニュー閉じたら表示に戻す
-});
-
+toggle.addEventListener("click", () => { overlay.classList.add("open"); toggle.style.display = "none"; });
+closeBtn.addEventListener("click", () => { overlay.classList.remove("open"); toggle.style.display = "block"; });
   </script>
 
   <!-- Firebaseスクリプト -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
-      authDomain: "train-jokyoc-89bb2.firebaseapp.com",
-      databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "train-jokyoc-89bb2",
-      storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
-      messagingSenderId: "348132786329",
-      appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
-      measurementId: "G-9VB9ENH5XP"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyA__5daU_p6g8fL7oC4vaK7Htpn7F0rrjY",
+  authDomain: "train-jokyoc-89bb2.firebaseapp.com",
+  databaseURL: "https://train-jokyoc-89bb2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "train-jokyoc-89bb2",
+  storageBucket: "train-jokyoc-89bb2.firebasestorage.app",
+  messagingSenderId: "348132786329",
+  appId: "1:348132786329:web:01b43b4b9dc80a0e337808",
+  measurementId: "G-9VB9ENH5XP"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    const routes = {
-      main: {
-        name: "桧山本線",
-        stations: ["桧山", "桧山東", "長田", "赤瀬戸", "上後多", "北区区役所前", "桧山みなみ野", "桧山中央"]
-      },
-      branch: {
-        name: "桧山東支線",
-        stations: ["桧山", "桧山東", "南桧山", "卯奈川銀山", "播輪里", "県立医療センター", "大多田"]
+const routes = {
+  main: { name: "桧山本線", stations: ["桧山","桧山東","長田","赤瀬戸","上後多","北区区役所前","桧山みなみ野","桧山中央"] },
+  branch: { name: "桧山東支線", stations: ["桧山","桧山東","南桧山","卯奈川銀山","播輪里","県立医療センター","大多田"] }
+};
+
+const container = document.getElementById("diagramContainer");
+const scrollText = document.getElementById("scrollText");
+
+function setScrollText(text) {
+  scrollText.textContent = text; // 文字列1回だけ
+
+  // 文字幅・親幅取得
+  const textWidth = scrollText.offsetWidth;
+  const wrapperWidth = scrollWrapper.offsetWidth;
+
+  // CSSカスタムプロパティにセットしてアニメーション距離調整
+  scrollText.style.setProperty('--scroll-distance', textWidth + wrapperWidth + 'px');
+
+  // アニメーション速度も文字長に応じて調整（任意）
+  const speed = 100; // px/秒
+  const duration = (textWidth + wrapperWidth) / speed;
+  scrollText.style.animationDuration = duration + 's';
+}
+
+const isOperatingRef = ref(db, "status/isOperating");
+onValue(isOperatingRef, (snapshot) => {
+  const isOperating = snapshot.val();
+  container.innerHTML = "";
+  setScrollText("");
+
+  if (!isOperating) {
+    const msg = document.createElement("div");
+    msg.className = "status-box";
+    msg.innerHTML = "<strong>現在、運行を行っておりません。</strong>";
+    container.appendChild(msg);
+
+    const stopText = "現在、運行を行っておりません。詳しくは公式Discordをご確認ください。";
+    setScrollText(stopText);
+    return;
+  }
+
+  loadStatus();
+});
+
+const statusesAll = {};
+
+function renderRoute(routeKey, statuses) {
+  const route = routes[routeKey];
+  const containerDiv = document.createElement("div");
+  containerDiv.className = "diagram";
+  containerDiv.setAttribute("data-route", routeKey);
+
+  route.stations.forEach((station,i)=>{
+    const stationEl = document.createElement("div"); stationEl.className="station";
+    const circle = document.createElement("div"); circle.className="circle"; stationEl.appendChild(circle);
+    const label = document.createElement("div"); label.textContent=station; stationEl.appendChild(label);
+    containerDiv.appendChild(stationEl);
+
+    if(i<route.stations.length-1){
+      const line = document.createElement("div");
+      const status = statuses[i]?.trim() || "normal";
+      line.className="line "+status;
+      containerDiv.appendChild(line);
+    }
+  });
+
+  return containerDiv;
+}
+
+function updateDescriptionsAll(statusesAll){
+  const order=['main','branch'];
+  let combinedText='';
+
+  order.forEach(routeKey=>{
+    const statuses=statusesAll[routeKey];
+    if(!statuses||!Array.isArray(statuses)) return;
+
+    const route = routes[routeKey];
+    const stations = route.stations;
+
+    let hasDisruptions=false;
+    let text = `${route.name}：`;
+
+    let i=0;
+    while(i<statuses.length){
+      const status=statuses[i];
+      let j=i+1;
+      while(j<statuses.length && statuses[j]===status) j++;
+      const from=stations[i];
+      const to=stations[j] || stations[stations.length-1];
+      if(status!=="normal"){
+        hasDisruptions=true;
+        const message=status==="delay"?"遅延":"運転見合わせ";
+        text+=`${from}〜${to}間で${message}が発生しています。 `;
       }
-    };
+      i=j;
+    }
 
-    const container = document.getElementById("diagramContainer");
-    const scrollMessage1 = document.getElementById("scrollMessage1");
-    const scrollMessage2 = document.getElementById("scrollMessage2");
+    if(!hasDisruptions) text+='現在、通常運行しています。 ';
+    combinedText+=text;
+  });
 
-    const isOperatingRef = ref(db, "status/isOperating");
-    onValue(isOperatingRef, (snapshot) => {
-      const isOperating = snapshot.val();
+  setScrollText(combinedText || "現在、全線通常運行しています。");
+}
 
-      container.innerHTML = "";
-      scrollMessage1.textContent = "";
-      scrollMessage2.textContent = "";
+function loadStatus(){
+  const routeKeys=['main','branch'];
+  routeKeys.forEach(routeKey=>{
+    const statusRef = ref(db, `status/${routeKey}`);
+    onValue(statusRef, (snapshot)=>{
+      const statuses = snapshot.val();
+      if(!statuses||!Array.isArray(statuses)) return;
 
-      if (!isOperating) {
-        const msg = document.createElement("div");
-        msg.className = "status-box";
-        msg.innerHTML = "<strong>現在、運行を行っておりません。</strong>";
-        container.appendChild(msg);
+      statusesAll[routeKey]=statuses;
 
-        const stopText = "現在、運行を行っておりません。詳しくは公式Discordをご確認ください。";
-        scrollMessage1.textContent = stopText;
-        scrollMessage2.textContent = stopText;
-        return;
-      }
+      container.innerHTML='';
+      ['main','branch'].forEach(key=>{
+        if(!statusesAll[key]) return;
+        const diagram=renderRoute(key,statusesAll[key]);
+        container.appendChild(diagram);
+      });
 
-      loadStatus();
+      updateDescriptionsAll(statusesAll);
     });
-
-    const statusesAll = {};
-
-    function renderRoute(routeKey, statuses) {
-      const route = routes[routeKey];
-      const containerDiv = document.createElement("div");
-      containerDiv.className = "diagram";
-      containerDiv.setAttribute("data-route", routeKey);
-
-      route.stations.forEach((station, i) => {
-        const stationEl = document.createElement("div");
-        stationEl.className = "station";
-
-        const circle = document.createElement("div");
-        circle.className = "circle";
-        stationEl.appendChild(circle);
-
-        const label = document.createElement("div");
-        label.textContent = station;
-        stationEl.appendChild(label);
-
-        containerDiv.appendChild(stationEl);
-
-        if (i < route.stations.length - 1) {
-          const line = document.createElement("div");
-          const status = statuses[i]?.trim() || "normal";
-          line.className = "line " + status;
-          containerDiv.appendChild(line);
-        }
-      });
-
-      return containerDiv;
-    }
-
-    function updateDescriptionsAll(statusesAll) {
-      const order = ['main', 'branch'];
-      let combinedText = '';
-
-      order.forEach(routeKey => {
-        const statuses = statusesAll[routeKey];
-        if (!statuses || !Array.isArray(statuses)) return;
-
-        const route = routes[routeKey];
-        const stations = route.stations;
-
-        let hasDisruptions = false;
-        let text = `${route.name}：`;
-
-        let i = 0;
-        while (i < statuses.length) {
-          const status = statuses[i];
-          let j = i + 1;
-          while (j < statuses.length && statuses[j] === status) j++;
-          const from = stations[i];
-          const to = stations[j] || stations[stations.length - 1];
-          if (status !== "normal") {
-            hasDisruptions = true;
-            const message = status === "delay" ? "遅延" : "運転見合わせ";
-            text += `${from}〜${to}間で${message}が発生しています。 `;
-          }
-          i = j;
-        }
-
-        if (!hasDisruptions) {
-          text += '現在、通常運行しています。 ';
-        }
-        combinedText += text;
-      });
-
-      scrollMessage1.textContent = combinedText || "現在、全線通常運行しています。";
-      scrollMessage2.textContent = combinedText || "現在、全線通常運行しています。";
-    }
-
-    function loadStatus() {
-      const routeKeys = ['main', 'branch'];
-      routeKeys.forEach(routeKey => {
-        const statusRef = ref(db, `status/${routeKey}`);
-        onValue(statusRef, (snapshot) => {
-          const statuses = snapshot.val();
-          if (!statuses || !Array.isArray(statuses)) return;
-
-          statusesAll[routeKey] = statuses;
-
-          container.innerHTML = '';
-          ['main', 'branch'].forEach(key => {
-            if (!statusesAll[key]) return;
-            const diagram = renderRoute(key, statusesAll[key]);
-            container.appendChild(diagram);
-          });
-
-          updateDescriptionsAll(statusesAll);
-        });
-      });
-    }
+  });
+}
   </script>
 </body>
 </html>
