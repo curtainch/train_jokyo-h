@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>遅延証明書一覧</title>
+<style>
+  body {
+    font-family: "Noto Sans JP", sans-serif;
+    padding: 2rem;
+    background-color: #f9f9f9;
+    color: #333;
+    max-width: 800px;
+    margin: auto;
+  }
+
+  h1 {
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 1.8rem;
+    color: #222;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 0.3rem;
+  }
+
+  .date-list button,
+  #dateContainer button {
+    margin: 0.4rem 0;
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+    font-size: 1rem;
+    border: none;
+    border-radius: 6px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease;
+    width: 100%;
+    text-align: left;
+  }
+
+  .date-list button:hover,
+  #dateContainer button:hover {
+    background-color: #f0f0f0;
+  }
+
+  .delay-list {
+    margin-top: 2rem;
+  }
+
+  .card {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .card h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #444;
+  }
+
+  .card p {
+    margin: 0.3rem 0;
+    line-height: 1.5;
+  }
+
+  button.pdf-btn {
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+  }
+
+  button.pdf-btn:hover {
+    background-color: #0056b3;
+  }
+
+  button.back-btn {
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 600px) {
+    body {
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+    }
+
+    button.pdf-btn, button.back-btn {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+
+  <script type="module" crossorigin src="/assets/delay-XiNSzX3e.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+</head>
+<body>
+  <h1>遅延証明書一覧</h1>
+  <div id="dateContainer">
+    <p>読み込み中...</p>
+  </div>
+
+  <div id="delayContainer" style="display:none;">
+    <button class="back-btn" id="backToDates">← 日付一覧に戻る</button>
+    <h2 id="selectedDateTitle"></h2>
+    <div id="delayList"></div>
+  </div>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- 日本語フォント -->
+  <script src="noto-sans-jp.js"></script>
+
+</body>
+</html>
