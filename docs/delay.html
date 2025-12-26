@@ -188,89 +188,83 @@
     };
 
     // PDF生成関数（前回のあなたのコードを流用）
-    const generatePDF = (title, description, date, delayMinutes = null) => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+const generatePDF = (title, description, date, delayMinutes = null) => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-      doc.addFileToVFS("NotoSansJP-Regular.ttf", window.NotoSansJPRegular);
-      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
-      doc.setFont("NotoSansJP");
+  doc.addFileToVFS("NotoSansJP-Regular.ttf", window.NotoSansJPRegular);
+  doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+  doc.setFont("NotoSansJP");
 
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      let y = 60;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  let y = 60;
 
-      doc.setFontSize(28);
-      doc.text("遅延証明書", pageWidth / 2, y, { align: "center" });
-      y += 30;
+  doc.setFontSize(28);
+  doc.text("遅延証明書", pageWidth / 2, y, { align: "center" });
+  y += 30;
 
-      doc.setFontSize(14);
-      doc.text(`発生日時: ${formatDateTime(date)}`, margin, y);
-      y += 20;
+  doc.setFontSize(14);
+  doc.text(`発生日時: ${formatDateTime(date)}`, margin, y);
+  y += 20;
 
-      doc.text(`タイトル: ${title}`, margin, y);
-      y += 20;
+  doc.text(`タイトル: ${title}`, margin, y);
+  y += 20;
 
-      const delay = delayMinutes !== null ? delayMinutes : extractDelayMinutes(description);
-      if (delay !== null) {
-        const delayText = `遅延時間: ${delay}分`;
-        doc.setFontSize(20);
-        doc.setTextColor(255, 0, 0);
-        const textWidth = doc.getTextWidth(delayText);
-        const rectX = margin - 5;
-        const rectY = y - 15;
-        const rectHeight = 20;
-        const rectWidth = textWidth + 10;
-        doc.setDrawColor(255, 0, 0);
-        doc.rect(rectX, rectY, rectWidth, rectHeight, "S");
-        doc.text(delayText, margin, y);
-        y += 30;
-        doc.setTextColor(0, 0, 0);
-      }
+  const delay = delayMinutes !== null ? delayMinutes : extractDelayMinutes(description);
+  if (delay !== null) {
+    const delayText = `遅延時間: ${delay}分`;
+    doc.setFontSize(20);
+    doc.setTextColor(255, 0, 0);
+    const textWidth = doc.getTextWidth(delayText);
+    const rectX = margin - 5;
+    const rectY = y - 15;
+    const rectHeight = 20;
+    const rectWidth = textWidth + 10;
+    doc.setDrawColor(255, 0, 0);
+    doc.rect(rectX, rectY, rectWidth, rectHeight, "S");
+    doc.text(delayText, margin, y);
+    y += 30;
+    doc.setTextColor(0, 0, 0);
+  }
 
-      doc.setFontSize(14);
-      doc.text("詳細:", margin, y);
-      y += 10;
+  doc.setFontSize(14);
+  doc.text("詳細:", margin, y);
+  y += 10;
 
-      let fontSize = 12;
-      let lines = [];
-      const maxHeight = pageHeight - y - 60;
+  let fontSize = 12;
+  let lines = [];
+  const maxHeight = pageHeight - y - 60;
 
-      while (fontSize >= 8) {
-        doc.setFontSize(fontSize);
-        lines = doc.splitTextToSize(description, pageWidth - margin * 2);
-        const totalHeight = lines.length * fontSize * 1.5;
-        if (totalHeight <= maxHeight) break;
-        fontSize--;
-      }
+  while (fontSize >= 8) {
+    doc.setFontSize(fontSize);
+    lines = doc.splitTextToSize(description, pageWidth - margin * 2);
+    const totalHeight = lines.length * fontSize * 1.5;
+    if (totalHeight <= maxHeight) break;
+    fontSize--;
+  }
 
-      doc.setFontSize(fontSize);
-      doc.text(lines, margin, y);
-      y += lines.length * fontSize * 1.5 + 20;
+  doc.setFontSize(fontSize);
+  doc.text(lines, margin, y);
+  y += lines.length * fontSize * 1.5 + 20;
 
-      doc.setFontSize(12);
-      doc.text("本証明書は、上記の事象により遅延が発生したことを証明するものです。", margin, y);
-      y += 20;
+  doc.setFontSize(12);
+  doc.text("本証明書は、上記の事象により遅延が発生したことを証明するものです。", margin, y);
+  y += 20;
 
-      const today = new Date();
-      doc.text(`発行日：${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`, margin, y);
-      y += 15;
-      doc.text("桧山鉄道株式会社", margin, y);
+  const today = new Date();
+  doc.text(`発行日：${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`, margin, y);
+  y += 15;
+  doc.text("桧山鉄道株式会社", margin, y);
 
-      const formatFilenameDate = (isoString) => {
-        const d = new Date(isoString);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const h = String(d.getHours()).padStart(2, "0");
-        const min = String(d.getMinutes()).padStart(2, "0");
-        return `${y}${m}${day}_${h}${min}`;
-      };
+  // ------------------------
+  // ここを変更: 新しいタブで開く
+  // ------------------------
+  const pdfUrl = doc.output('bloburl'); // PDFをBlob URLで生成
+  window.open(pdfUrl, '_blank');        // 新しいタブで表示
+};
 
-      const filename = `遅延証明書_${formatFilenameDate(date)}.pdf`;
-      doc.save(filename);
-    };
 
     // 全遅延データを読み込み、日付ごとにグループ化する
     onValue(ref(db, "delayInfos"), (snapshot) => {
